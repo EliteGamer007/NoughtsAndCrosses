@@ -1,45 +1,62 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
 
+# Enable CORS so frontend can make requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class Move(BaseModel):
-    player: str  # 'X' or 'O'
-    row: int     # 1-based index
-    col: int     # 1-based index
+    player: str
+    row: int
+    col: int
 
 class GameState:
     def __init__(self):
         self.space = [[' ' for _ in range(3)] for _ in range(3)]
         self.full = 0
+        self.finished = False
 
     def insert(self, player, row, col):
+        if self.finished:
+            raise ValueError("Game over. Please reset to start a new game.")
         if player not in ('X', 'O'):
-            raise ValueError("Invalid player. Choose 'X' or 'O'.")
-        if 0 <= row < 3 and 0 <= col < 3:
-            if self.space[row][col] == ' ':
-                self.space[row][col] = player
-                self.full += 1
-                return True
-            else:
-                raise ValueError("Space already occupied.")
-        else:
-            raise ValueError("Invalid row or column.")
+            raise ValueError("Invalid player. Use 'X' or 'O'.")
+        if not (0 <= row < 3 and 0 <= col < 3):
+            raise ValueError("Row and column must be between 0 and 2.")
+        if self.space[row][col] != ' ':
+            raise ValueError("Space already occupied.")
+        self.space[row][col] = player
+        self.full += 1
 
     def win(self):
         for i in range(3):
             if self.space[i][0] == self.space[i][1] == self.space[i][2] != ' ':
+                self.finished = True
                 return self.space[i][0]
             if self.space[0][i] == self.space[1][i] == self.space[2][i] != ' ':
+                self.finished = True
                 return self.space[0][i]
         if self.space[0][0] == self.space[1][1] == self.space[2][2] != ' ':
+            self.finished = True
             return self.space[0][0]
         if self.space[0][2] == self.space[1][1] == self.space[2][0] != ' ':
+            self.finished = True
             return self.space[0][2]
         return None
 
     def draw(self):
-        return self.full == 9 and self.win() is None
+        if self.full == 9 and not self.win():
+            self.finished = True
+            return True
+        return False
 
     def get_board(self):
         return self.space
@@ -49,7 +66,7 @@ game = GameState()
 @app.post("/move")
 def make_move(move: Move):
     try:
-        game.insert(move.player, move.row - 1, move.col - 1)
+        game.insert(move.player, move.row, move.col)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -69,4 +86,4 @@ def get_board():
 def reset_game():
     global game
     game = GameState()
-    return {"message": "Game reset."}
+    return {"message": "Game reset.", "board": game.get_board()}
