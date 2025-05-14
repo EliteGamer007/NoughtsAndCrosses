@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Noughts and Crosses</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 50px;
+    }
+
+    .board-container {
+      position: relative;
+      width: max-content;
+      margin: auto;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 5px;
+      position: relative;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      font-size: 2rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: 2px solid #444;
+      background-color: #f0f0f0;
+    }
+
+    .cell:disabled {
+      cursor: not-allowed;
+      background-color: #ddd;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 1.2rem;
+    }
+
+    button#reset {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+    }
+
+    #strike {
+      position: absolute;
+      width: 0;
+      height: 0;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    svg line {
+      stroke: black;
+      stroke-width: 5px;
+      stroke-linecap: round;
+    }
+  </style>
+</head>
+<body>
+  <h1>Noughts and Crosses</h1>
+  <div class="board-container">
+    <div class="board" id="board"></div>
+    <svg id="strike" width="270" height="270">
+      <line x1="0" y1="0" x2="0" y2="0" />
+    </svg>
+  </div>
+  <div id="status">Player X's turn</div>
+  <button id="reset" onclick="resetGame()">Reset Game</button>
+
+  <script>
+    const boardDiv = document.getElementById('board');
+    const statusDiv = document.getElementById('status');
+    const strike = document.getElementById('strike').querySelector('line');
+    let currentPlayer = 'X';
+    let gameOver = false;
+
+    const CELL_SIZE = 80;
+    const GAP = 5;
+    const OFFSET = CELL_SIZE / 2;
+
+    function createBoard() {
+      boardDiv.innerHTML = '';
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const btn = document.createElement('button');
+          btn.className = 'cell';
+          btn.id = `cell-${row}-${col}`;
+          btn.onclick = () => makeMove(row, col, btn);
+          boardDiv.appendChild(btn);
+        }
+      }
+      clearStrike();
+    }
+
+    function makeMove(row, col, btn) {
+      if (gameOver || btn.innerText !== '') return;
+
+      fetch("http://localhost:8000/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player: currentPlayer, row, col })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.detail) {
+            alert(data.detail);
+            return;
+          }
+
+          btn.innerText = currentPlayer;
+          btn.disabled = true;
+
+          if (data.status === "win") {
+            statusDiv.innerText = `Player ${data.winner} wins!`;
+            gameOver = true;
+            disableAll();
+            if (data.winning_line) {
+              drawStrike(data.winning_line);
+            }
+          } else if (data.status === "draw") {
+            statusDiv.innerText = "It's a draw!";
+            gameOver = true;
+            disableAll();
+          } else {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            statusDiv.innerText = `Player ${currentPlayer}'s turn`;
+          }
+        });
+    }
+
+    function drawStrike(winningLine) {
+      const [[row1, col1], [row2, col2]] = winningLine;
+
+      const x1 = col1 * (CELL_SIZE + GAP) + OFFSET;
+      const y1 = row1 * (CELL_SIZE + GAP) + OFFSET;
+      const x2 = col2 * (CELL_SIZE + GAP) + OFFSET;
+      const y2 = row2 * (CELL_SIZE + GAP) + OFFSET;
+
+      strike.setAttribute('x1', x1);
+      strike.setAttribute('y1', y1);
+      strike.setAttribute('x2', x2);
+      strike.setAttribute('y2', y2);
+    }
+
+    function clearStrike() {
+      strike.setAttribute('x1', 0);
+      strike.setAttribute('y1', 0);
+      strike.setAttribute('x2', 0);
+      strike.setAttribute('y2', 0);
+    }
+
+    function disableAll() {
+      document.querySelectorAll('.cell').forEach(cell => cell.disabled = true);
+    }
+
+    function resetGame() {
+      fetch("http://localhost:8000/reset", {
+        method: "POST"
+      })
+        .then(() => {
+          currentPlayer = 'X';
+          gameOver = false;
+          statusDiv.innerText = "Player X's turn";
+          createBoard();
+        });
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
