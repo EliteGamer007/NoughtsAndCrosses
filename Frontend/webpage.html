@@ -106,7 +106,7 @@
     function makeMove(row, col, btn) {
       if (gameOver || btn.innerText !== '') return;
 
-      fetch("http://localhost:8000/move", {
+      fetch("https://noughtsandcrosses.onrender.com/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ player: currentPlayer, row, col })
@@ -165,7 +165,7 @@
     }
 
     function resetGame() {
-      fetch("http://localhost:8000/reset", {
+      fetch("https://noughtsandcrosses.onrender.com/reset", {
         method: "POST"
       })
         .then(() => {
