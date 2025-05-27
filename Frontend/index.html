@@ -11,27 +11,51 @@
       background-color: rgb(111, 244, 122);
     }
 
-    .board-container {
-      position: relative;
-      width: max-content;
-      margin: auto;
-    }
-    .heading{
+    .heading {
       color: rgba(59, 38, 19, 0.923);
       font-weight: bold;
+      font-size: 3rem;
+      font-family: 'sans-serif';
     }
+
+    .board-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      margin-top: 30px;
+    }
+
+    .side-icon {
+      width: 300px;
+      height: 300px;
+    }
+
+    .side-left {
+      margin-right: 60px;
+    }
+
+    .side-right {
+      margin-left: 60px;
+    }
+
+    .board-container {
+      position: relative;
+      width: 260px;
+      height: 260px;
+    }
+
     .board {
       display: grid;
       grid-template-columns: repeat(3, 80px);
       grid-template-rows: repeat(3, 80px);
       gap: 5px;
-      position: relative;
     }
 
     .cell {
       width: 80px;
       height: 80px;
-      font-size: 2rem; 
+      font-size: 2rem;
       font-weight: bold;
       cursor: pointer;
       border: 2px solid #012609;
@@ -45,7 +69,9 @@
 
     #status {
       margin-top: 20px;
-      font-size: 1.2rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #012609;
     }
 
     button#reset {
@@ -54,16 +80,35 @@
       font-size: 1rem;
     }
 
+    #strike {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <h1 class="heading">Noughts and Crosses</h1>
-  <div class="board-container">
-    <div class="board" id="board"></div>
-    <svg id="strike" width="270" height="270">
-      <line x1="0" y1="0" x2="0" y2="0" />
+
+  <div class="board-area">
+    <svg class="side-icon side-left" viewBox="0 0 100 100">
+      <line x1="10" y1="10" x2="90" y2="90" stroke="#012609" stroke-width="10"/>
+      <line x1="90" y1="10" x2="10" y2="90" stroke="#012609" stroke-width="10"/>
+    </svg>
+
+    <div class="board-container">
+      <div class="board" id="board"></div>
+      <svg id="strike" width="260" height="260">
+        <line x1="0" y1="0" x2="0" y2="0" stroke="#c4f5c4" stroke-width="5" />
+      </svg>
+    </div>
+
+    <svg class="side-icon side-right" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" stroke="#012609" stroke-width="10" fill="none" />
     </svg>
   </div>
+
   <div id="status">Player X's turn</div>
   <button id="reset" onclick="resetGame()">Reset Game</button>
 
@@ -84,7 +129,7 @@
         for (let col = 0; col < 3; col++) {
           const btn = document.createElement('button');
           btn.className = 'cell';
-          btn.id = cell-${row}-${col};
+          btn.id = `cell-${row}-${col}`;
           btn.onclick = () => makeMove(row, col, btn);
           boardDiv.appendChild(btn);
         }
@@ -111,16 +156,17 @@
           btn.disabled = true;
 
           if (data.status === "win") {
-            statusDiv.innerText = Player ${data.winner} wins!;
+            statusDiv.innerText = `Player ${data.winner} wins!`;
             gameOver = true;
             disableAll();
+            if (data.line) drawStrike(data.line);
           } else if (data.status === "draw") {
             statusDiv.innerText = "It's a draw!";
             gameOver = true;
             disableAll();
           } else {
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            statusDiv.innerText = Player ${currentPlayer}'s turn;
+            statusDiv.innerText = `Player ${currentPlayer}'s turn`;
           }
         });
     }
