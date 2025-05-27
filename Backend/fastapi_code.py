@@ -4,10 +4,9 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-# Enable CORS so frontend can make requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust for production
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,21 +36,17 @@ class GameState:
         self.full += 1
 
     def win(self):
-        # Check rows
         for i in range(3):
             if self.space[i][0] == self.space[i][1] == self.space[i][2] != ' ':
                 self.finished = True
                 return self.space[i][0], [[i, 0], [i, 2]]
-        # Check columns
         for i in range(3):
             if self.space[0][i] == self.space[1][i] == self.space[2][i] != ' ':
                 self.finished = True
                 return self.space[0][i], [[0, i], [2, i]]
-        # Check main diagonal
         if self.space[0][0] == self.space[1][1] == self.space[2][2] != ' ':
             self.finished = True
             return self.space[0][0], [[0, 0], [2, 2]]
-        # Check anti-diagonal
         if self.space[0][2] == self.space[1][1] == self.space[2][0] != ' ':
             self.finished = True
             return self.space[0][2], [[0, 2], [2, 0]]
@@ -104,4 +99,3 @@ def reset_game():
     global game
     game = GameState()
     return {"message": "Game reset.", "board": game.get_board()}
-
