@@ -8,6 +8,7 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding-top: 50px;
+      background-color: rgb(111, 244, 122);
     }
 
     .board-container {
@@ -15,7 +16,10 @@
       width: max-content;
       margin: auto;
     }
-
+    .heading{
+      color: rgba(59, 38, 19, 0.923);
+      font-weight: bold;
+    }
     .board {
       display: grid;
       grid-template-columns: repeat(3, 80px);
@@ -27,11 +31,11 @@
     .cell {
       width: 80px;
       height: 80px;
-      font-size: 2rem;
+      font-size: 2rem; 
       font-weight: bold;
       cursor: pointer;
-      border: 2px solid #444;
-      background-color: #f0f0f0;
+      border: 2px solid #012609;
+      background-color: #c4f5c4;
     }
 
     .cell:disabled {
@@ -50,25 +54,10 @@
       font-size: 1rem;
     }
 
-    #strike {
-      position: absolute;
-      width: 0;
-      height: 0;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    svg line {
-      stroke: black;
-      stroke-width: 5px;
-      stroke-linecap: round;
-    }
   </style>
 </head>
 <body>
-  <h1>Noughts and Crosses</h1>
+  <h1 class="heading">Noughts and Crosses</h1>
   <div class="board-container">
     <div class="board" id="board"></div>
     <svg id="strike" width="270" height="270">
@@ -95,7 +84,7 @@
         for (let col = 0; col < 3; col++) {
           const btn = document.createElement('button');
           btn.className = 'cell';
-          btn.id = `cell-${row}-${col}`;
+          btn.id = cell-${row}-${col};
           btn.onclick = () => makeMove(row, col, btn);
           boardDiv.appendChild(btn);
         }
@@ -122,19 +111,16 @@
           btn.disabled = true;
 
           if (data.status === "win") {
-            statusDiv.innerText = `Player ${data.winner} wins!`;
+            statusDiv.innerText = Player ${data.winner} wins!;
             gameOver = true;
             disableAll();
-            if (data.winning_line) {
-              drawStrike(data.winning_line);
-            }
           } else if (data.status === "draw") {
             statusDiv.innerText = "It's a draw!";
             gameOver = true;
             disableAll();
           } else {
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            statusDiv.innerText = `Player ${currentPlayer}'s turn`;
+            statusDiv.innerText = Player ${currentPlayer}'s turn;
           }
         });
     }
