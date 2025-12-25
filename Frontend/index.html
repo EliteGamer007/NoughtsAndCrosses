@@ -10,14 +10,19 @@
       padding-top: 50px;
       background-color: rgb(111, 244, 122);
     }
-
     .heading {
       color: rgba(59, 38, 19, 0.923);
       font-weight: bold;
       font-size: 3rem;
-      font-family: 'sans-serif';
+      margin-bottom: 10px;
     }
-
+    .controls {
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 15px;
+      border-radius: 8px;
+      display: inline-block;
+    }
     .board-area {
       display: flex;
       justify-content: center;
@@ -25,33 +30,23 @@
       position: relative;
       margin-top: 30px;
     }
-
     .side-icon {
-      width: 300px;
-      height: 300px;
+      width: 200px;
+      height: 200px;
     }
-
-    .side-left {
-      margin-right: 60px;
-    }
-
-    .side-right {
-      margin-left: 60px;
-    }
-
+    .side-left { margin-right: 40px; }
+    .side-right { margin-left: 40px; }
     .board-container {
       position: relative;
       width: 260px;
       height: 260px;
     }
-
     .board {
       display: grid;
       grid-template-columns: repeat(3, 80px);
       grid-template-rows: repeat(3, 80px);
       gap: 5px;
     }
-
     .cell {
       width: 80px;
       height: 80px;
@@ -60,26 +55,28 @@
       cursor: pointer;
       border: 2px solid #012609;
       background-color: #c4f5c4;
+      transition: background 0.2s;
     }
-
     .cell:disabled {
       cursor: not-allowed;
-      background-color: #ddd;
+      background-color: #b0dbb0;
     }
-
     #status {
       margin-top: 20px;
       font-size: 1.5rem;
       font-weight: bold;
       color: #012609;
     }
-
     button#reset {
       margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1rem;
+      padding: 10px 25px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      background-color: #012609;
+      color: white;
+      border: none;
+      border-radius: 5px;
     }
-
     #strike {
       position: absolute;
       top: 0;
@@ -91,6 +88,16 @@
 <body>
   <h1 class="heading">Noughts and Crosses</h1>
 
+  <div class="controls">
+    <label><input type="checkbox" id="vsCpu" checked> Play vs Computer</label>
+    <span style="margin-left: 15px;">Difficulty:</span>
+    <select id="aiLevel">
+      <option value="1">Level 1 (Easy)</option>
+      <option value="2" selected>Level 2 (Medium)</option>
+      <option value="3">Level 3 (Pro)</option>
+    </select>
+  </div>
+
   <div class="board-area">
     <svg class="side-icon side-left" viewBox="0 0 100 100">
       <line x1="10" y1="10" x2="90" y2="90" stroke="#012609" stroke-width="10"/>
@@ -100,7 +107,7 @@
     <div class="board-container">
       <div class="board" id="board"></div>
       <svg id="strike" width="260" height="260">
-        <line x1="0" y1="0" x2="0" y2="0" stroke="#c4f5c4" stroke-width="5" />
+        <line x1="0" y1="0" x2="0" y2="0" stroke="#012609" stroke-width="6" stroke-linecap="round" />
       </svg>
     </div>
 
@@ -113,12 +120,13 @@
   <button id="reset" onclick="resetGame()">Reset Game</button>
 
   <script>
+    const API_BASE = "http://127.0.0.1:8000";
     const boardDiv = document.getElementById('board');
     const statusDiv = document.getElementById('status');
     const strike = document.getElementById('strike').querySelector('line');
+    
     let currentPlayer = 'X';
     let gameOver = false;
-
     const CELL_SIZE = 80;
     const GAP = 5;
     const OFFSET = CELL_SIZE / 2;
@@ -130,59 +138,77 @@
           const btn = document.createElement('button');
           btn.className = 'cell';
           btn.id = `cell-${row}-${col}`;
-          btn.onclick = () => makeMove(row, col, btn);
+          btn.onclick = () => handlePlayerMove(row, col, btn);
           boardDiv.appendChild(btn);
         }
       }
       clearStrike();
     }
 
-    function makeMove(row, col, btn) {
-      if (gameOver || btn.innerText !== '') return;
+    async function handlePlayerMove(row, col, btn) {
+      if (gameOver || btn.innerText !== '' || currentPlayer !== 'X') return;
 
-      fetch("https://noughtsandcrosses.onrender.com/move", {
+      const response = await fetch(`${API_BASE}/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player: currentPlayer, row, col })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.detail) {
-            alert(data.detail);
-            return;
-          }
+        body: JSON.stringify({ player: 'X', row, col })
+      });
+      const data = await response.json();
 
-          btn.innerText = currentPlayer;
-          btn.disabled = true;
+      if (data.detail) {
+        alert(data.detail);
+        return;
+      }
 
-          if (data.status === "win") {
-            statusDiv.innerText = `Player ${data.winner} wins!`;
-            gameOver = true;
-            disableAll();
-            if (data.line) drawStrike(data.line);
-          } else if (data.status === "draw") {
-            statusDiv.innerText = "It's a draw!";
-            gameOver = true;
-            disableAll();
-          } else {
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            statusDiv.innerText = `Player ${currentPlayer}'s turn`;
-          }
-        });
+      updateUI(data);
+
+      if (!gameOver && document.getElementById('vsCpu').checked) {
+        currentPlayer = 'O';
+        statusDiv.innerText = "Computer is thinking...";
+        setTimeout(triggerAiMove, 600);
+      }
     }
 
-    function drawStrike(winningLine) {
-      const [[row1, col1], [row2, col2]] = winningLine;
+    async function triggerAiMove() {
+      const level = document.getElementById('aiLevel').value;
+      const response = await fetch(`${API_BASE}/ai-move?level=${level}`, { 
+        method: "POST" 
+      });
+      const data = await response.json();
 
-      const x1 = col1 * (CELL_SIZE + GAP) + OFFSET;
-      const y1 = row1 * (CELL_SIZE + GAP) + OFFSET;
-      const x2 = col2 * (CELL_SIZE + GAP) + OFFSET;
-      const y2 = row2 * (CELL_SIZE + GAP) + OFFSET;
+      updateUI(data);
 
-      strike.setAttribute('x1', x1);
-      strike.setAttribute('y1', y1);
-      strike.setAttribute('x2', x2);
-      strike.setAttribute('y2', y2);
+      if (!gameOver) {
+        currentPlayer = 'X';
+        statusDiv.innerText = "Player X's turn";
+      }
+    }
+
+    function updateUI(data) {
+      data.board.forEach((row, rIdx) => {
+        row.forEach((val, cIdx) => {
+          const cell = document.getElementById(`cell-${rIdx}-${cIdx}`);
+          cell.innerText = val === ' ' ? '' : val;
+          if (val !== ' ') cell.disabled = true;
+        });
+      });
+
+      if (data.status === "win") {
+        statusDiv.innerText = `Player ${data.winner} wins!`;
+        gameOver = true;
+        if (data.winning_line) drawStrike(data.winning_line);
+      } else if (data.status === "draw") {
+        statusDiv.innerText = "It's a draw!";
+        gameOver = true;
+      }
+    }
+
+    function drawStrike(line) {
+      const [[r1, c1], [r2, c2]] = line;
+      strike.setAttribute('x1', c1 * (CELL_SIZE + GAP) + OFFSET);
+      strike.setAttribute('y1', r1 * (CELL_SIZE + GAP) + OFFSET);
+      strike.setAttribute('x2', c2 * (CELL_SIZE + GAP) + OFFSET);
+      strike.setAttribute('y2', r2 * (CELL_SIZE + GAP) + OFFSET);
     }
 
     function clearStrike() {
@@ -192,14 +218,8 @@
       strike.setAttribute('y2', 0);
     }
 
-    function disableAll() {
-      document.querySelectorAll('.cell').forEach(cell => cell.disabled = true);
-    }
-
     function resetGame() {
-      fetch("https://noughtsandcrosses.onrender.com/reset", {
-        method: "POST"
-      })
+      fetch(`${API_BASE}/reset`, { method: "POST" })
         .then(() => {
           currentPlayer = 'X';
           gameOver = false;
