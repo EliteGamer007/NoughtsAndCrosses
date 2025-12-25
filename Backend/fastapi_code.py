@@ -24,15 +24,28 @@ class GameState:
         self.space = [[' ' for _ in range(3)] for _ in range(3)]
         self.full = 0
         self.finished = False
+        self.history=[]
 
+    def save_state(self):
+        board_snapshot = [row[:] for row in self.space]
+        self.history.append((board_snapshot, self.full, self.finished))
+
+    def undo(self):
+        if not self.history:
+            return False
+        self.space, self.full, self.finished = self.history.pop()
+        return True
+    
     def insert(self, player: str, row: int, col: int):
         if self.finished:
             raise ValueError("Game over. Please reset to start a new game.")
+        self.save_state()
         if player not in ('X', 'O'):
             raise ValueError("Invalid player. Use 'X' or 'O'.")
         if not (0 <= row < 3 and 0 <= col < 3):
             raise ValueError("Row and column must be between 0 and 2.")
         if self.space[row][col] != ' ':
+            self.history.pop()
             raise ValueError("Space already occupied.")
         
         self.space[row][col] = player
@@ -122,7 +135,6 @@ class GameState:
 game = GameState()
 
 def process_move_result(player_type: str):
-    """Helper to standardize the JSON response after a move."""
     result = game.win()
     if result:
         winner, winning_line = result
@@ -150,6 +162,13 @@ def make_move(move: Move):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return process_move_result(move.player)
+
+@app.post("/undo")
+def undo_move():
+    success = game.undo() 
+    if success:
+        game.undo() 
+    return {"message": "Undone", "board": game.get_board(), "finished": game.finished}
 
 @app.post("/ai-move")
 def ai_move(level: int = 2):

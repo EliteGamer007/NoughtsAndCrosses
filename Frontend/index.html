@@ -77,6 +77,16 @@
       border: none;
       border-radius: 5px;
     }
+    button#undo {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      background-color: #012609;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
     #strike {
       position: absolute;
       top: 0;
@@ -118,6 +128,7 @@
 
   <div id="status">Player X's turn</div>
   <button id="reset" onclick="resetGame()">Reset Game</button>
+  <button id="undo" onclick="undoMove()">Undo Move</button>
 
   <script>
     const API_BASE = "http://127.0.0.1:8000";
@@ -185,24 +196,42 @@
     }
 
     function updateUI(data) {
-      data.board.forEach((row, rIdx) => {
-        row.forEach((val, cIdx) => {
-          const cell = document.getElementById(`cell-${rIdx}-${cIdx}`);
-          cell.innerText = val === ' ' ? '' : val;
-          if (val !== ' ') cell.disabled = true;
-        });
-      });
+    data.board.forEach((row, rIdx) => {
+      row.forEach((val, cIdx) => {
+        const cell = document.getElementById(`cell-${rIdx}-${cIdx}`);
+        cell.innerText = val === ' ' ? '' : val;
 
-      if (data.status === "win") {
-        statusDiv.innerText = `Player ${data.winner} wins!`;
-        gameOver = true;
-        if (data.winning_line) drawStrike(data.winning_line);
-      } else if (data.status === "draw") {
-        statusDiv.innerText = "It's a draw!";
-        gameOver = true;
-      }
+        if (val === ' ') {
+          cell.disabled = false;
+        } else {
+          cell.disabled = true;
+        }
+      });
+    });
+
+    if (data.status === "win") {
+      statusDiv.innerText = `Player ${data.winner} wins!`;
+      gameOver = true;
+      if (data.winning_line) drawStrike(data.winning_line);
+    } else if (data.status === "draw") {
+      statusDiv.innerText = "It's a draw!";
+      gameOver = true;
+    }
+  }
+    async function undoMove() {
+    if (gameOver) {
+        gameOver = false;
+        clearStrike();
     }
 
+    const response = await fetch(`${API_BASE}/undo`, { method: "POST" });
+    const data = await response.json();
+
+    updateUI(data);
+    
+    currentPlayer = 'X';
+    statusDiv.innerText = "Player X's turn (Undone)";
+  }
     function drawStrike(line) {
       const [[r1, c1], [r2, c2]] = line;
       strike.setAttribute('x1', c1 * (CELL_SIZE + GAP) + OFFSET);
