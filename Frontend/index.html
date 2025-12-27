@@ -6,129 +6,154 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       text-align: center;
-      padding-top: 50px;
+      padding-top: 40px;
+      padding-bottom: 60px;
       background-color: rgb(111, 244, 122);
+      margin: 0;
     }
     .heading {
-      color: rgba(59, 38, 19, 0.923);
-      font-weight: bold;
+      color: #3b2613;
+      font-weight: 800;
       font-size: 3rem;
-    }
-    .controls {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .control-row {
-      margin: 10px 0;
+      margin: 15px 0;
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 15px;
     }
     .symbol-btn {
-      padding: 10px 25px;
-      font-size: 1.1rem;
+      padding: 8px 20px;
+      font-size: 1rem;
       font-weight: bold;
       cursor: pointer;
-      background-color: #ccc;
-      color: #666;
-      border: 2px solid #555;
-      border-radius: 5px;
-      transition: all 0.3s ease;
+      background-color: #e0e0e0;
+      color: #555;
+      border: 1px solid #999;
+      border-radius: 6px;
+      transition: all 0.2s ease;
     }
     .symbol-btn.active {
       background-color: #012609;
       color: white;
       border-color: #012609;
       opacity: 1 !important;
+      transform: scale(1.05);
     }
-    .symbol-btn:not(.active) {
-      opacity: 0.6;
-    }
-    .symbol-btn:hover {
-      background-color: #bbb;
-    }
+    .symbol-btn:not(.active) { opacity: 0.7; }
+    
     select#aiLevel {
-      padding: 10px;
+      padding: 8px;
       font-size: 1rem;
       border: 2px solid #012609;
       border-radius: 5px;
+      font-weight: bold;
       background: white;
     }
+
     .board-area {
       display: flex;
       justify-content: center;
       align-items: center;
       position: relative;
-      margin-top: 30px;
+      margin-top: 20px;
     }
-    .side-icon {
-      width: 300px;
-      height: 300px;
-    }
-    .side-left { margin-right: 60px; }
-    .side-right { margin-left: 60px; }
+    .side-icon { width: 180px; height: 180px; opacity: 0.9; }
+    .side-left { margin-right: 50px; }
+    .side-right { margin-left: 50px; }
+    
     .board-container {
       position: relative;
       width: 260px;
       height: 260px;
     }
+
     .board {
       display: grid;
       grid-template-columns: repeat(3, 80px);
       grid-template-rows: repeat(3, 80px);
       gap: 5px;
+      padding: 5px;
     }
+    
     .cell {
       width: 80px;
       height: 80px;
-      font-size: 2rem;
+      font-size: 2.5rem;
       font-weight: bold;
       cursor: pointer;
       border: 2px solid #012609;
       background-color: #c4f5c4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 4px;
+      padding: 0;
     }
-    .cell:disabled {
-      cursor: not-allowed;
-    }
+    
     .cell.winner {
       background-color: #ffd700 !important;
+      color: #3b2613;
       animation: pulse 1s infinite;
+      border-color: #b8860b;
     }
-    .cell.shake {
-      animation: shake 0.4s;
-    }
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      75% { transform: translateX(10px); }
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
-    }
+    .cell.shake { animation: shake 0.4s; }
+    
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    
     #status {
-      margin-top: 20px;
-      font-size: 1.5rem;
+      margin-top: 15px;
+      font-size: 1.4rem;
       font-weight: bold;
       color: #012609;
+      min-height: 30px;
     }
-    .action-btns {
-      margin-top: 20px;
-    }
+    
     .action-btns button {
       padding: 10px 20px;
-      font-size: 1rem;
+      margin: 10px;
+      font-weight: bold;
+      background: #012609;
+      color: white;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
-      margin: 0 5px;
     }
+    .action-btns button:hover { background: #024d12; }
+    
     #strike {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 5px;
+      left: 5px; 
       pointer-events: none;
+      z-index: 10;
     }
+
+    #streak-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 35px;
+      background-color: #f4f4f4;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-top: 1px solid #ccc;
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+      gap: 20px;
+    }
+    .stat-group { display: flex; align-items: center; gap: 5px; }
+    .stat-label { font-weight: 800; color: #555; }
+    .stat-val { font-family: monospace; font-size: 1rem; }
+    .streak-highlight { color: #d32f2f; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -157,8 +182,8 @@
 
     <div class="board-container">
       <div class="board" id="board"></div>
-      <svg id="strike" width="260" height="260">
-        <line x1="0" y1="0" x2="0" y2="0" stroke="#012609" stroke-width="5" />
+      <svg id="strike" width="255" height="255">
+        <line x1="0" y1="0" x2="0" y2="0" stroke="rgba(1, 38, 9, 0.8)" stroke-width="8" stroke-linecap="round" />
       </svg>
     </div>
 
@@ -167,15 +192,25 @@
     </svg>
   </div>
 
-  <div id="status">Player X's turn</div>
+  <div id="status">Your Turn (X)</div>
   
   <div class="action-btns">
-    <button id="reset" onclick="resetGame()">Reset Game</button>
-    <button id="undo" onclick="undoMove()">Undo Move</button>
+    <button onclick="resetGame()">Reset Game</button>
+    <button onclick="undoMove()">Undo Move</button>
+  </div>
+
+  <div id="streak-bar">
+    <div class="stat-group"><span class="stat-label">L1:</span> <span id="s1" class="stat-val">0W/0D/0L</span></div>
+    <div style="color:#ccc">|</div>
+    <div class="stat-group"><span class="stat-label">L2:</span> <span id="s2" class="stat-val">0W/0D/0L</span></div>
+    <div style="color:#ccc">|</div>
+    <div class="stat-group"><span class="stat-label">L3:</span> <span id="s3" class="stat-val">0W/0D/0L</span></div>
+    <div style="color:#ccc">|</div>
+    <div class="stat-group">STREAK: <span id="streak-val" class="streak-highlight">0</span> 🔥</div>
   </div>
 
   <script>
-    const API_BASE = "http://127.0.0.1:5000";
+    const API_BASE = "https://noughtsandcrosses.onrender.com";
     const boardDiv = document.getElementById('board');
     const statusDiv = document.getElementById('status');
     const strikeLine = document.getElementById('strike').querySelector('line');
@@ -190,27 +225,6 @@
     const GAP = 5;
     const OFFSET = CELL_SIZE / 2;
 
-    function setPlayer(symbol) {
-      if (!boardIsEmpty()) return alert("Reset game to change players!");
-      userSymbol = symbol;
-      cpuSymbol = symbol === 'X' ? 'O' : 'X';
-      document.getElementById('btnX').classList.toggle('active', symbol === 'X');
-      document.getElementById('btnO').classList.toggle('active', symbol === 'O');
-      statusDiv.innerText = `Player ${userSymbol}'s turn`;
-      if (userSymbol === 'O' && vsCpuEnabled) triggerAiMove();
-    }
-
-    function toggleCpu() {
-      vsCpuEnabled = !vsCpuEnabled;
-      const btn = document.getElementById('btnCpu');
-      btn.innerText = `Vs Computer: ${vsCpuEnabled ? 'ON' : 'OFF'}`;
-      btn.classList.toggle('active', vsCpuEnabled);
-    }
-
-    function boardIsEmpty() {
-      return Array.from(document.querySelectorAll('.cell')).every(c => c.innerText === '');
-    }
-
     function createBoard() {
       boardDiv.innerHTML = '';
       for (let r = 0; r < 3; r++) {
@@ -223,6 +237,10 @@
         }
       }
       clearStrike();
+    }
+
+    function getLevel() {
+      return parseInt(document.getElementById('aiLevel').value);
     }
 
     async function handleMove(row, col, btn) {
@@ -239,7 +257,12 @@
       const res = await fetch(`${API_BASE}/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player: currentPlayer, row, col })
+        body: JSON.stringify({ 
+          player: currentPlayer, 
+          row, 
+          col, 
+          level: getLevel() 
+        })
       });
       const data = await res.json();
       updateUI(data);
@@ -255,13 +278,12 @@
     }
 
     async function triggerAiMove() {
-      const level = document.getElementById('aiLevel').value;
-      const res = await fetch(`${API_BASE}/ai-move?level=${level}`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/ai-move?level=${getLevel()}&user_symbol=${userSymbol}`, { method: "POST" });
       const data = await res.json();
       updateUI(data);
       if (!gameOver) {
         currentPlayer = userSymbol;
-        statusDiv.innerText = `Player ${userSymbol}'s turn`;
+        statusDiv.innerText = `Your Turn (${userSymbol})`;
       }
     }
 
@@ -275,25 +297,41 @@
         });
       });
 
+      const s = data.stats;
+      document.getElementById('s1').innerText = `${s[1].w}W/${s[1].d}D/${s[1].l}L`;
+      document.getElementById('s2').innerText = `${s[2].w}W/${s[2].d}D/${s[2].l}L`;
+      document.getElementById('s3').innerText = `${s[3].w}W/${s[3].d}D/${s[3].l}L`;
+      document.getElementById('streak-val').innerText = s.streak;
+
       if (data.status === "win") {
         gameOver = true;
-        statusDiv.innerText = `Player ${data.winner} wins!`;
+        const winnerName = data.winner === userSymbol ? "You Win!" : "Computer Wins!";
+        statusDiv.innerText = winnerName;
+        
         if (data.winning_line) highlightWin(data.winning_line);
+        
         if (data.winner === userSymbol) {
           confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         }
+        setTimeout(resetGame, 1500);
+
       } else if (data.status === "draw") {
         gameOver = true;
         statusDiv.innerText = "It's a draw!";
+        setTimeout(resetGame, 1500);
       }
     }
 
     function highlightWin(line) {
-      const [[r1, c1], [r2, c2]] = line;
-      const midR = (r1 + r2) / 2, midC = (c1 + c2) / 2;
-      [[r1, c1], [midR, midC], [r2, c2]].forEach(coord => {
-        document.getElementById(`cell-${coord[0]}-${coord[1]}`).classList.add('winner');
+      line.forEach(coord => {
+        const cell = document.getElementById(`cell-${coord[0]}-${coord[1]}`);
+        if(cell) cell.classList.add('winner');
       });
+
+      const [start, middle, end] = line; 
+      const [r1, c1] = start;
+      const [r2, c2] = end;
+
       strikeLine.setAttribute('x1', c1 * (CELL_SIZE + GAP) + OFFSET);
       strikeLine.setAttribute('y1', r1 * (CELL_SIZE + GAP) + OFFSET);
       strikeLine.setAttribute('x2', c2 * (CELL_SIZE + GAP) + OFFSET);
@@ -305,7 +343,7 @@
       const data = await res.json();
       gameOver = false;
       currentPlayer = userSymbol;
-      statusDiv.innerText = `Player ${userSymbol}'s turn`;
+      statusDiv.innerText = `Your Turn (${userSymbol})`;
       clearStrike();
       updateUI(data);
     }
@@ -317,12 +355,42 @@
     }
 
     async function resetGame() {
-      await fetch(`${API_BASE}/reset`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
+      const data = await res.json();
       gameOver = false;
       currentPlayer = 'X';
       createBoard();
-      statusDiv.innerText = userSymbol === 'X' ? "Player X's turn" : "Computer is thinking...";
+      
+      statusDiv.innerText = userSymbol === 'X' ? `Your Turn (X)` : "Computer is thinking...";
+      
+      const s = data.stats;
+      document.getElementById('s1').innerText = `${s[1].w}W/${s[1].d}D/${s[1].l}L`;
+      document.getElementById('s2').innerText = `${s[2].w}W/${s[2].d}D/${s[2].l}L`;
+      document.getElementById('s3').innerText = `${s[3].w}W/${s[3].d}D/${s[3].l}L`;
+      document.getElementById('streak-val').innerText = s.streak;
+
       if (userSymbol === 'O' && vsCpuEnabled) triggerAiMove();
+    }
+    
+    function toggleCpu() {
+      vsCpuEnabled = !vsCpuEnabled;
+      const btn = document.getElementById('btnCpu');
+      btn.innerText = `Vs Computer: ${vsCpuEnabled ? 'ON' : 'OFF'}`;
+      btn.classList.toggle('active', vsCpuEnabled);
+    }
+
+    function setPlayer(symbol) {
+      if (!boardIsEmpty()) return alert("Reset game to change players!");
+      userSymbol = symbol;
+      cpuSymbol = symbol === 'X' ? 'O' : 'X';
+      document.getElementById('btnX').classList.toggle('active', symbol === 'X');
+      document.getElementById('btnO').classList.toggle('active', symbol === 'O');
+      statusDiv.innerText = `Your Turn (${userSymbol})`;
+      if (userSymbol === 'O' && vsCpuEnabled) triggerAiMove();
+    }
+    
+    function boardIsEmpty() {
+      return Array.from(document.querySelectorAll('.cell')).every(c => c.innerText === '');
     }
 
     createBoard();
