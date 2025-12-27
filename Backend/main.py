@@ -176,7 +176,7 @@ def ai_move(level: int = 2):
         raise HTTPException(status_code=400, detail="Game already finished.")
     
     # Map 1-3 to skill percentage (Level 3 = 1 error in 100)
-    skill_map = {1: 50, 2: 80, 3: 99}
+    skill_map = {1: 67, 2: 85, 3: 99}
     skill_threshold = skill_map.get(level, 70) 
 
     roll = random.randint(1, 100)

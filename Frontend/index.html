@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Noughts and Crosses</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,14 +15,45 @@
       color: rgba(59, 38, 19, 0.923);
       font-weight: bold;
       font-size: 3rem;
-      margin-bottom: 10px;
     }
     .controls {
       margin-bottom: 20px;
-      background: rgba(255, 255, 255, 0.2);
-      padding: 15px;
-      border-radius: 8px;
-      display: inline-block;
+    }
+    .control-row {
+      margin: 10px 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .symbol-btn {
+      padding: 10px 25px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: #ccc;
+      color: #666;
+      border: 2px solid #555;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+    .symbol-btn.active {
+      background-color: #012609;
+      color: white;
+      border-color: #012609;
+      opacity: 1 !important;
+    }
+    .symbol-btn:not(.active) {
+      opacity: 0.6;
+    }
+    .symbol-btn:hover {
+      background-color: #bbb;
+    }
+    select#aiLevel {
+      padding: 10px;
+      font-size: 1rem;
+      border: 2px solid #012609;
+      border-radius: 5px;
+      background: white;
     }
     .board-area {
       display: flex;
@@ -31,11 +63,11 @@
       margin-top: 30px;
     }
     .side-icon {
-      width: 200px;
-      height: 200px;
+      width: 300px;
+      height: 300px;
     }
-    .side-left { margin-right: 40px; }
-    .side-right { margin-left: 40px; }
+    .side-left { margin-right: 60px; }
+    .side-right { margin-left: 60px; }
     .board-container {
       position: relative;
       width: 260px;
@@ -55,11 +87,26 @@
       cursor: pointer;
       border: 2px solid #012609;
       background-color: #c4f5c4;
-      transition: background 0.2s;
     }
     .cell:disabled {
       cursor: not-allowed;
-      background-color: #b0dbb0;
+    }
+    .cell.winner {
+      background-color: #ffd700 !important;
+      animation: pulse 1s infinite;
+    }
+    .cell.shake {
+      animation: shake 0.4s;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
     }
     #status {
       margin-top: 20px;
@@ -67,25 +114,14 @@
       font-weight: bold;
       color: #012609;
     }
-    button#reset {
+    .action-btns {
       margin-top: 20px;
-      padding: 10px 25px;
-      font-size: 1.1rem;
-      cursor: pointer;
-      background-color: #012609;
-      color: white;
-      border: none;
-      border-radius: 5px;
     }
-    button#undo {
-      margin-top: 20px;
-      padding: 10px 25px;
-      font-size: 1.1rem;
+    .action-btns button {
+      padding: 10px 20px;
+      font-size: 1rem;
       cursor: pointer;
-      background-color: #012609;
-      color: white;
-      border: none;
-      border-radius: 5px;
+      margin: 0 5px;
     }
     #strike {
       position: absolute;
@@ -99,13 +135,18 @@
   <h1 class="heading">Noughts and Crosses</h1>
 
   <div class="controls">
-    <label><input type="checkbox" id="vsCpu" checked> Play vs Computer</label>
-    <span style="margin-left: 15px;">Difficulty:</span>
-    <select id="aiLevel">
-      <option value="1">Level 1 (Easy)</option>
-      <option value="2" selected>Level 2 (Medium)</option>
-      <option value="3">Level 3 (Pro)</option>
-    </select>
+    <div class="control-row">
+      <button id="btnX" class="symbol-btn active" onclick="setPlayer('X')">Play as X</button>
+      <button id="btnO" class="symbol-btn" onclick="setPlayer('O')">Play as O</button>
+    </div>
+    <div class="control-row">
+      <button id="btnCpu" class="symbol-btn active" onclick="toggleCpu()">Vs Computer: ON</button>
+      <select id="aiLevel">
+        <option value="1">Level 1 (Easy)</option>
+        <option value="2" selected>Level 2 (Medium)</option>
+        <option value="3">Level 3 (Pro)</option>
+      </select>
+    </div>
   </div>
 
   <div class="board-area">
@@ -117,7 +158,7 @@
     <div class="board-container">
       <div class="board" id="board"></div>
       <svg id="strike" width="260" height="260">
-        <line x1="0" y1="0" x2="0" y2="0" stroke="#012609" stroke-width="6" stroke-linecap="round" />
+        <line x1="0" y1="0" x2="0" y2="0" stroke="#012609" stroke-width="5" />
       </svg>
     </div>
 
@@ -127,134 +168,161 @@
   </div>
 
   <div id="status">Player X's turn</div>
-  <button id="reset" onclick="resetGame()">Reset Game</button>
-  <button id="undo" onclick="undoMove()">Undo Move</button>
+  
+  <div class="action-btns">
+    <button id="reset" onclick="resetGame()">Reset Game</button>
+    <button id="undo" onclick="undoMove()">Undo Move</button>
+  </div>
 
   <script>
-    const API_BASE = "http://127.0.0.1:8000";
+    const API_BASE = "http://127.0.0.1:5000";
     const boardDiv = document.getElementById('board');
     const statusDiv = document.getElementById('status');
-    const strike = document.getElementById('strike').querySelector('line');
+    const strikeLine = document.getElementById('strike').querySelector('line');
     
+    let userSymbol = 'X';
+    let cpuSymbol = 'O';
+    let vsCpuEnabled = true;
     let currentPlayer = 'X';
     let gameOver = false;
+
     const CELL_SIZE = 80;
     const GAP = 5;
     const OFFSET = CELL_SIZE / 2;
 
+    function setPlayer(symbol) {
+      if (!boardIsEmpty()) return alert("Reset game to change players!");
+      userSymbol = symbol;
+      cpuSymbol = symbol === 'X' ? 'O' : 'X';
+      document.getElementById('btnX').classList.toggle('active', symbol === 'X');
+      document.getElementById('btnO').classList.toggle('active', symbol === 'O');
+      statusDiv.innerText = `Player ${userSymbol}'s turn`;
+      if (userSymbol === 'O' && vsCpuEnabled) triggerAiMove();
+    }
+
+    function toggleCpu() {
+      vsCpuEnabled = !vsCpuEnabled;
+      const btn = document.getElementById('btnCpu');
+      btn.innerText = `Vs Computer: ${vsCpuEnabled ? 'ON' : 'OFF'}`;
+      btn.classList.toggle('active', vsCpuEnabled);
+    }
+
+    function boardIsEmpty() {
+      return Array.from(document.querySelectorAll('.cell')).every(c => c.innerText === '');
+    }
+
     function createBoard() {
       boardDiv.innerHTML = '';
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
           const btn = document.createElement('button');
           btn.className = 'cell';
-          btn.id = `cell-${row}-${col}`;
-          btn.onclick = () => handlePlayerMove(row, col, btn);
+          btn.id = `cell-${r}-${c}`;
+          btn.onclick = () => handleMove(r, c, btn);
           boardDiv.appendChild(btn);
         }
       }
       clearStrike();
     }
 
-    async function handlePlayerMove(row, col, btn) {
-      if (gameOver || btn.innerText !== '' || currentPlayer !== 'X') return;
-
-      const response = await fetch(`${API_BASE}/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player: 'X', row, col })
-      });
-      const data = await response.json();
-
-      if (data.detail) {
-        alert(data.detail);
+    async function handleMove(row, col, btn) {
+      if (gameOver || btn.innerText !== '') {
+        if (btn.innerText !== '') {
+          btn.classList.add('shake');
+          setTimeout(() => btn.classList.remove('shake'), 400);
+        }
         return;
       }
 
+      if (vsCpuEnabled && currentPlayer !== userSymbol) return;
+
+      const res = await fetch(`${API_BASE}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player: currentPlayer, row, col })
+      });
+      const data = await res.json();
       updateUI(data);
 
-      if (!gameOver && document.getElementById('vsCpu').checked) {
-        currentPlayer = 'O';
+      if (!gameOver && vsCpuEnabled) {
+        currentPlayer = cpuSymbol;
         statusDiv.innerText = "Computer is thinking...";
         setTimeout(triggerAiMove, 600);
+      } else if (!gameOver) {
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        statusDiv.innerText = `Player ${currentPlayer}'s turn`;
       }
     }
 
     async function triggerAiMove() {
       const level = document.getElementById('aiLevel').value;
-      const response = await fetch(`${API_BASE}/ai-move?level=${level}`, { 
-        method: "POST" 
-      });
-      const data = await response.json();
-
+      const res = await fetch(`${API_BASE}/ai-move?level=${level}`, { method: "POST" });
+      const data = await res.json();
       updateUI(data);
-
       if (!gameOver) {
-        currentPlayer = 'X';
-        statusDiv.innerText = "Player X's turn";
+        currentPlayer = userSymbol;
+        statusDiv.innerText = `Player ${userSymbol}'s turn`;
       }
     }
 
     function updateUI(data) {
-    data.board.forEach((row, rIdx) => {
-      row.forEach((val, cIdx) => {
-        const cell = document.getElementById(`cell-${rIdx}-${cIdx}`);
-        cell.innerText = val === ' ' ? '' : val;
-
-        if (val === ' ') {
-          cell.disabled = false;
-        } else {
-          cell.disabled = true;
-        }
+      data.board.forEach((row, r) => {
+        row.forEach((val, c) => {
+          const cell = document.getElementById(`cell-${r}-${c}`);
+          cell.innerText = val === ' ' ? '' : val;
+          cell.disabled = val !== ' ';
+          cell.classList.remove('winner');
+        });
       });
-    });
 
-    if (data.status === "win") {
-      statusDiv.innerText = `Player ${data.winner} wins!`;
-      gameOver = true;
-      if (data.winning_line) drawStrike(data.winning_line);
-    } else if (data.status === "draw") {
-      statusDiv.innerText = "It's a draw!";
-      gameOver = true;
-    }
-  }
-    async function undoMove() {
-    if (gameOver) {
-        gameOver = false;
-        clearStrike();
+      if (data.status === "win") {
+        gameOver = true;
+        statusDiv.innerText = `Player ${data.winner} wins!`;
+        if (data.winning_line) highlightWin(data.winning_line);
+        if (data.winner === userSymbol) {
+          confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+      } else if (data.status === "draw") {
+        gameOver = true;
+        statusDiv.innerText = "It's a draw!";
+      }
     }
 
-    const response = await fetch(`${API_BASE}/undo`, { method: "POST" });
-    const data = await response.json();
-
-    updateUI(data);
-    
-    currentPlayer = 'X';
-    statusDiv.innerText = "Player X's turn (Undone)";
-  }
-    function drawStrike(line) {
+    function highlightWin(line) {
       const [[r1, c1], [r2, c2]] = line;
-      strike.setAttribute('x1', c1 * (CELL_SIZE + GAP) + OFFSET);
-      strike.setAttribute('y1', r1 * (CELL_SIZE + GAP) + OFFSET);
-      strike.setAttribute('x2', c2 * (CELL_SIZE + GAP) + OFFSET);
-      strike.setAttribute('y2', r2 * (CELL_SIZE + GAP) + OFFSET);
+      const midR = (r1 + r2) / 2, midC = (c1 + c2) / 2;
+      [[r1, c1], [midR, midC], [r2, c2]].forEach(coord => {
+        document.getElementById(`cell-${coord[0]}-${coord[1]}`).classList.add('winner');
+      });
+      strikeLine.setAttribute('x1', c1 * (CELL_SIZE + GAP) + OFFSET);
+      strikeLine.setAttribute('y1', r1 * (CELL_SIZE + GAP) + OFFSET);
+      strikeLine.setAttribute('x2', c2 * (CELL_SIZE + GAP) + OFFSET);
+      strikeLine.setAttribute('y2', r2 * (CELL_SIZE + GAP) + OFFSET);
+    }
+
+    async function undoMove() {
+      const res = await fetch(`${API_BASE}/undo`, { method: "POST" });
+      const data = await res.json();
+      gameOver = false;
+      currentPlayer = userSymbol;
+      statusDiv.innerText = `Player ${userSymbol}'s turn`;
+      clearStrike();
+      updateUI(data);
     }
 
     function clearStrike() {
-      strike.setAttribute('x1', 0);
-      strike.setAttribute('y1', 0);
-      strike.setAttribute('x2', 0);
-      strike.setAttribute('y2', 0);
+      strikeLine.setAttribute('x1', 0); strikeLine.setAttribute('y1', 0);
+      strikeLine.setAttribute('x2', 0); strikeLine.setAttribute('y2', 0);
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('winner'));
     }
 
-    function resetGame() {
-      fetch(`${API_BASE}/reset`, { method: "POST" })
-        .then(() => {
-          currentPlayer = 'X';
-          gameOver = false;
-          statusDiv.innerText = "Player X's turn";
-          createBoard();
-        });
+    async function resetGame() {
+      await fetch(`${API_BASE}/reset`, { method: "POST" });
+      gameOver = false;
+      currentPlayer = 'X';
+      createBoard();
+      statusDiv.innerText = userSymbol === 'X' ? "Player X's turn" : "Computer is thinking...";
+      if (userSymbol === 'O' && vsCpuEnabled) triggerAiMove();
     }
 
     createBoard();
